@@ -75,8 +75,13 @@ void particle_deallocate(struct particles* part)
 /** particle mover */
 int mover_PC(struct particles* part, struct EMfield* field, struct grid* grd, struct parameters* param)
 {
+    return mover_PC_gpu(part, field, grd, param);
+}
+
+int mover_PC_cpu(struct particles* part, struct EMfield* field, struct grid* grd, struct parameters* param)
+{
     // print species and subcycling
-    std::cout << "***  MOVER with SUBCYCLYING "<< param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
+    std::cout << "*** CPU MOVER with SUBCYCLYING "<< param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
  
     // auxiliary variables
     FPpart dt_sub_cycling = (FPpart) param->dt/((double) part->n_sub_cycles);
@@ -231,6 +236,18 @@ int mover_PC(struct particles* part, struct EMfield* field, struct grid* grd, st
                                                                         
     return(0); // exit succcesfully
 } // end of the mover
+
+int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd, struct parameters* param)
+{
+    std::cout << "*** GPU MOVER with SUBCYCLYING " << param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
+
+    return(0);
+}
+
+__global__ void kernel_mover_PC()
+{
+
+}
 
 
 
