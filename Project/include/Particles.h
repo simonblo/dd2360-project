@@ -64,7 +64,12 @@ int mover_PC_cpu(struct particles*, struct EMfield*, struct grid*, struct parame
 int mover_PC_gpu(struct particles*, struct EMfield*, struct grid*, struct parameters*);
 
 /** particle mover kernel */
-__global__ void kernel_mover_PC();
+__global__ void kernel_mover_PC(FPpart*  Px, FPpart*  Py, FPpart*  Pz,
+                                FPfield* Ex, FPfield* Ey, FPfield* Ez,
+                                FPfield* Bx, FPfield* By, FPfield* Bz,
+                                FPfield* XN, FPfield* YN, FPfield* ZN,
+                                int nxn, int nyn, int nzn,
+                                int nop, int nsc, int nim);
 
 /** Interpolation Particle --> Grid: This is for species */
 void interpP2G(struct particles*, struct interpDensSpecies*, struct grid*);

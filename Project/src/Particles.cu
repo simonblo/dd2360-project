@@ -2,6 +2,11 @@
 #include "Alloc.h"
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+#include <device_launch_parameters.h>
+
+// Temporary
+#include <assert.h>
 
 /** allocate particle arrays */
 void particle_allocate(struct parameters* param, struct particles* part, int is)
@@ -241,12 +246,120 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
 {
     std::cout << "*** GPU MOVER with SUBCYCLYING " << param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
 
+    FPpart *x, *y, *z;
+    FPfield *Bxn, *Byn, *Bzn;
+    FPfield *Ex, *Ey, *Ez;
+    FPfield *XN, *YN, *ZN;
+
+    cudaMalloc(&x, sizeof(FPpart) * part->npmax);
+    cudaMalloc(&y, sizeof(FPpart) * part->npmax);
+    cudaMalloc(&z, sizeof(FPpart) * part->npmax);
+
+    cudaMalloc(&Bxn, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+    cudaMalloc(&Byn, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+    cudaMalloc(&Bzn, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+
+    cudaMalloc(&Ex, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+    cudaMalloc(&Ey, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+    cudaMalloc(&Ez, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+
+    cudaMalloc(&XN, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+    cudaMalloc(&YN, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+    cudaMalloc(&ZN, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+
+    cudaMemcpy(x, part->x, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+    cudaMemcpy(y, part->y, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+    cudaMemcpy(z, part->z, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(Bxn, field->Bxn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(Byn, field->Byn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(Bzn, field->Bzn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(Ex, field->Ex_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(Ey, field->Ey_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(Ez, field->Ez_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+
+    cudaMemcpy(XN, grd->XN_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(YN, grd->YN_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(ZN, grd->ZN_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+
+    // GPU execution
+    int threads = 64;
+    int blocks = (part->nop + threads - 1) / threads;
+    kernel_mover_PC<<<blocks, threads>>>(x, y, z, Ex, Ey, Ez, Bxn, Byn, Bzn, XN, YN, ZN, grd->nxn, grd->nyn, grd->nzn, part->nop, part->n_sub_cycles, part->NiterMover);
+    cudaDeviceSynchronize();
+
+    //assert(cudaGetLastError() == cudaSuccess);
+
+    cudaMemcpy(part->x, x, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    cudaMemcpy(part->y, y, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    cudaMemcpy(part->z, z, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+
+    cudaFree(x);
+    cudaFree(y);
+    cudaFree(z);
+
+    cudaFree(Bxn);
+    cudaFree(Byn);
+    cudaFree(Bzn);
+
+    cudaFree(Ex);
+    cudaFree(Ey);
+    cudaFree(Ez);
+
+    cudaFree(XN);
+    cudaFree(YN);
+    cudaFree(ZN);
+
     return(0);
 }
 
-__global__ void kernel_mover_PC()
+__global__ void kernel_mover_PC(FPpart*  Px, FPpart*  Py, FPpart*  Pz,
+                                FPfield* Ex, FPfield* Ey, FPfield* Ez,
+                                FPfield* Bx, FPfield* By, FPfield* Bz,
+                                FPfield* XN, FPfield* YN, FPfield* ZN,
+                                int nxn, int nyn, int nzn,
+                                int nop, int nsc, int nim)
 {
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
+    if (tid < nop)
+    {
+        for (int i = 0; i != nsc; ++i)
+        {
+            FPpart xptilde = Px[tid];
+            FPpart yptilde = Py[tid];
+            FPpart zptilde = Pz[tid];
+
+            for (int j = 0; j != nim; ++j)
+            {
+                int ix = 2 + int((Px[tid] - 0) * 1.0f); // TODO: Add xStart and invdx.
+                int iy = 2 + int((Py[tid] - 0) * 1.0f); // TODO: Add yStart and invdy.
+                int iz = 2 + int((Pz[tid] - 0) * 1.0f); // TODO: Add zStart and invdz.
+
+                FPfield weight[8];
+
+                FPfield Exl = 0.0, Eyl = 0.0, Ezl = 0.0;
+                FPfield Bxl = 0.0, Byl = 0.0, Bzl = 0.0;
+
+                for (int u = 0; u != 2; ++u)
+                {
+                    for (int v = 0; v != 2; ++v)
+                    {
+                        for (int w = 0; w != 2; ++w)
+                        {
+                            Exl += weight[get_idx(u, v, w, 2, 2)] * Ex[get_idx(ix - u, iy - v, iz - w, nyn, nzn)];
+                            Eyl += weight[get_idx(u, v, w, 2, 2)] * Ey[get_idx(ix - u, iy - v, iz - w, nyn, nzn)];
+                            Ezl += weight[get_idx(u, v, w, 2, 2)] * Ez[get_idx(ix - u, iy - v, iz - w, nyn, nzn)];
+                            Bxl += weight[get_idx(u, v, w, 2, 2)] * Bx[get_idx(ix - u, iy - v, iz - w, nyn, nzn)];
+                            Byl += weight[get_idx(u, v, w, 2, 2)] * By[get_idx(ix - u, iy - v, iz - w, nyn, nzn)];
+                            Bzl += weight[get_idx(u, v, w, 2, 2)] * Bz[get_idx(ix - u, iy - v, iz - w, nyn, nzn)];
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 
