@@ -10,6 +10,49 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\Alloc.h" />
+    <ClInclude Include="include\Basic.h" />
+    <ClInclude Include="include\BC.h" />
+    <ClInclude Include="include\ConfigFile.h" />
+    <ClInclude Include="include\EMfield.h" />
+    <ClInclude Include="include\EMfield_aux.h" />
+    <ClInclude Include="include\Grid.h" />
+    <ClInclude Include="include\IC.h" />
+    <ClInclude Include="include\input_array.h" />
+    <ClInclude Include="include\InterpDensNet.h" />
+    <ClInclude Include="include\InterpDensSpecies.h" />
+    <ClInclude Include="include\Parameters.h" />
+    <ClInclude Include="include\Particles.h" />
+    <ClInclude Include="include\Particles_aux.h" />
+    <ClInclude Include="include\PrecisionTypes.h" />
+    <ClInclude Include="include\RW_IO.h" />
+    <ClInclude Include="include\Smoothing.h" />
+    <ClInclude Include="include\Timing.h" />
+    <ClInclude Include="include\TransArraySpace3D.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="inputfiles\GEM_2D.inp" />
+    <None Include="inputfiles\GEM_3D.inp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Basic.cpp" />
+    <ClCompile Include="src\BC.cpp" />
+    <ClCompile Include="src\ConfigFile.cpp" />
+    <ClCompile Include="src\EMfield.cpp" />
+    <ClCompile Include="src\EMfield_aux.cpp" />
+    <ClCompile Include="src\Grid.cpp" />
+    <ClCompile Include="src\InterpDensNet.cpp" />
+    <ClCompile Include="src\InterpDensSpecies.cpp" />
+    <ClCompile Include="src\Particles_aux.cpp" />
+    <ClCompile Include="src\RW_IO.cpp" />
+    <ClCompile Include="src\sputniPIC.cpp" />
+    <ClCompile Include="src\Timing.cpp" />
+    <ClCompile Include="src\TransArraySpace3D.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="src\Particles.cu" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{1BC25F73-5AFE-410B-8B59-F61D7E9EAAF0}</ProjectGuid>
     <RootNamespace>Project</RootNamespace>
@@ -47,6 +90,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -64,6 +108,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -76,9 +121,6 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
     </CudaCompile>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <CudaCompile Include="Main.cu" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 12.3.targets" />
