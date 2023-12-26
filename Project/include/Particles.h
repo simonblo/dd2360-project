@@ -61,20 +61,6 @@ void particle_deallocate(struct particles*);
 /** particle mover */
 int mover_PC(struct particles*, struct EMfield*, struct grid*, struct parameters*);
 int mover_PC_cpu(struct particles*, struct EMfield*, struct grid*, struct parameters*);
-
-int mover_PC_cpu_2(FPpart* Px, FPpart* Py, FPpart* Pz,
-                   FPpart* Pu, FPpart* Pv, FPpart* Pw,
-                   FPfield* Ex, FPfield* Ey, FPfield* Ez,
-                   FPfield* Bx, FPfield* By, FPfield* Bz,
-                   FPfield* XN, FPfield* YN, FPfield* ZN,
-                   FPpart qom, double dt, double c,
-                   FPfield invdx, FPfield invdy, FPfield invdz, FPfield invVOL,
-                   double xStart, double yStart, double zStart,
-                   double Lx, double Ly, double Lz,
-                   bool PERIODICX, bool PERIODICY, bool PERIODICZ,
-                   int nxn, int nyn, int nzn,
-                   int nop, int nsc, int nim);
-
 int mover_PC_gpu(struct particles*, struct EMfield*, struct grid*, struct parameters*);
 
 /** particle mover kernel */
@@ -90,19 +76,6 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
                                 bool PERIODICX, bool PERIODICY, bool PERIODICZ,
                                 int nxn, int nyn, int nzn,
                                 int nop, int nsc, int nim);
-
-__global__ void kernel_mover_PC_2(FPpart* Px, FPpart* Py, FPpart* Pz,
-                                  FPpart* Pu, FPpart* Pv, FPpart* Pw,
-                                  FPfield* Ex, FPfield* Ey, FPfield* Ez,
-                                  FPfield* Bx, FPfield* By, FPfield* Bz,
-                                  FPfield* XN, FPfield* YN, FPfield* ZN,
-                                  FPpart qom, double dt, double c,
-                                  FPfield invdx, FPfield invdy, FPfield invdz, FPfield invVOL,
-                                  double xStart, double yStart, double zStart,
-                                  double Lx, double Ly, double Lz,
-                                  bool PERIODICX, bool PERIODICY, bool PERIODICZ,
-                                  int nxn, int nyn, int nzn,
-                                  int nop, int nsc, int nim);
 
 /** Interpolation Particle --> Grid: This is for species */
 void interpP2G(struct particles*, struct interpDensSpecies*, struct grid*);
