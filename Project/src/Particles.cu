@@ -505,6 +505,10 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
     cudaMemcpy(part->y, y, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
     cudaMemcpy(part->z, z, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
 
+    cudaMemcpy(part->u, u, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    cudaMemcpy(part->v, v, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    cudaMemcpy(part->w, w, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+
     cudaFree(x);
     cudaFree(y);
     cudaFree(z);
