@@ -319,21 +319,6 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
     cudaMemcpy(part->v_gpu, part->v, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
     cudaMemcpy(part->w_gpu, part->w, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
 
-    // copy electric field from cpu to gpu
-    cudaMemcpy(field->Ex_gpu, field->Ex_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-    cudaMemcpy(field->Ey_gpu, field->Ey_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-    cudaMemcpy(field->Ez_gpu, field->Ez_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-
-    // copy magnetic field from cpu to gpu
-    cudaMemcpy(field->Bxn_gpu, field->Bxn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-    cudaMemcpy(field->Byn_gpu, field->Byn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-    cudaMemcpy(field->Bzn_gpu, field->Bzn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-
-    // copy grid points from cpu to gpu
-    cudaMemcpy(grd->XN_gpu, grd->XN_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-    cudaMemcpy(grd->YN_gpu, grd->YN_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-    cudaMemcpy(grd->ZN_gpu, grd->ZN_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-
     // execute particle movement simulation on device
 	int threads = 64;
 	int blocks = (part->nop + threads - 1) / threads;

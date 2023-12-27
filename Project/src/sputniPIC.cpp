@@ -66,14 +66,27 @@ int main(int argc, char **argv){
     
     // Allocate Particles
     particles *part = new particles[param.ns];
-    // allocation
-    for (int is=0; is < param.ns; is++){
+    for (int is=0; is < param.ns; is++) {
         particle_allocate(&param,&part[is],is);
     }
     
     // Initialization
     initGEM(&param,&grd,&field,&field_aux,part,ids);
-    
+
+    // copy electric field from cpu to gpu
+    cudaMemcpy(field.Ex_gpu, field.Ex_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(field.Ey_gpu, field.Ey_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(field.Ez_gpu, field.Ez_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
+
+    // copy magnetic field from cpu to gpu
+    cudaMemcpy(field.Bxn_gpu, field.Bxn_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(field.Byn_gpu, field.Byn_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(field.Bzn_gpu, field.Bzn_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
+
+    // copy grid points from cpu to gpu
+    cudaMemcpy(grd.XN_gpu, grd.XN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(grd.YN_gpu, grd.YN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(grd.ZN_gpu, grd.ZN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     
     // **********************************************************//
     // **** Start the Simulation!  Cycle index start from 1  *** //
