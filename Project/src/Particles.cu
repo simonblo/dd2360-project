@@ -52,14 +52,14 @@ void particle_allocate(struct parameters* param, struct particles* part, int is)
     long npmax = part->npmax;
 
     // allocate position
-    part->x = new FPpart[npmax];
-    part->y = new FPpart[npmax];
-    part->z = new FPpart[npmax];
+    cudaHostAlloc(&part->x, sizeof(FPpart) * npmax, cudaHostAllocDefault);
+    cudaHostAlloc(&part->y, sizeof(FPpart) * npmax, cudaHostAllocDefault);
+    cudaHostAlloc(&part->z, sizeof(FPpart) * npmax, cudaHostAllocDefault);
 
     // allocate velocity
-    part->u = new FPpart[npmax];
-    part->v = new FPpart[npmax];
-    part->w = new FPpart[npmax];
+    cudaHostAlloc(&part->u, sizeof(FPpart) * npmax, cudaHostAllocDefault);
+    cudaHostAlloc(&part->v, sizeof(FPpart) * npmax, cudaHostAllocDefault);
+    cudaHostAlloc(&part->w, sizeof(FPpart) * npmax, cudaHostAllocDefault);
 
     // allocate charge = q * statistical weight
     part->q = new FPinterp[npmax];
@@ -69,12 +69,12 @@ void particle_allocate(struct parameters* param, struct particles* part, int is)
 void particle_deallocate(struct particles* part)
 {
     // deallocate particle variables
-    delete[] part->x;
-    delete[] part->y;
-    delete[] part->z;
-    delete[] part->u;
-    delete[] part->v;
-    delete[] part->w;
+    cudaFree(part->x);
+    cudaFree(part->y);
+    cudaFree(part->z);
+    cudaFree(part->u);
+    cudaFree(part->v);
+    cudaFree(part->w);
     delete[] part->q;
 }
 
