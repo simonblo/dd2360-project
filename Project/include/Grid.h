@@ -8,7 +8,8 @@
 #include "PrecisionTypes.h"
 
 /** Grid Data */
-struct grid {
+struct grid
+{
     /** number of cells - X direction, including + 2 (guard cells) */
     int nxc;
     /** number of nodes - X direction, including + 2 extra nodes for guard cells */
@@ -57,8 +58,11 @@ struct grid {
     /** coordinate node Z */
     FPfield* ZN_flat;
     FPfield*** ZN;
-    
-    
+
+    // grid points flat array for gpu
+    FPfield* XN_gpu;
+    FPfield* YN_gpu;
+    FPfield* ZN_gpu;
 };
 
 /** Set up the grid quantities */
@@ -108,6 +112,5 @@ void lapN2N(FPfield***, FPfield***, grid*);
 
 /** calculate laplacian on central points, given a scalar field defined on central points */
 void lapC2C(FPfield***, FPfield***, grid*);
-
 
 #endif

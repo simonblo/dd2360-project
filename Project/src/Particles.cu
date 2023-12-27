@@ -51,15 +51,25 @@ void particle_allocate(struct parameters* param, struct particles* part, int is)
 
     long npmax = part->npmax;
 
-    // allocate position
+    // allocate position on cpu
     cudaHostAlloc(&part->x, sizeof(FPpart) * npmax, cudaHostAllocDefault);
     cudaHostAlloc(&part->y, sizeof(FPpart) * npmax, cudaHostAllocDefault);
     cudaHostAlloc(&part->z, sizeof(FPpart) * npmax, cudaHostAllocDefault);
 
-    // allocate velocity
+    // allocate velocity on cpu
     cudaHostAlloc(&part->u, sizeof(FPpart) * npmax, cudaHostAllocDefault);
     cudaHostAlloc(&part->v, sizeof(FPpart) * npmax, cudaHostAllocDefault);
     cudaHostAlloc(&part->w, sizeof(FPpart) * npmax, cudaHostAllocDefault);
+
+    // allocate position on gpu
+    cudaMalloc(&part->x_gpu, sizeof(FPpart) * npmax);
+    cudaMalloc(&part->y_gpu, sizeof(FPpart) * npmax);
+    cudaMalloc(&part->z_gpu, sizeof(FPpart) * npmax);
+
+    // allocate velocity on gpu
+    cudaMalloc(&part->u_gpu, sizeof(FPpart) * npmax);
+    cudaMalloc(&part->v_gpu, sizeof(FPpart) * npmax);
+    cudaMalloc(&part->w_gpu, sizeof(FPpart) * npmax);
 
     // allocate charge = q * statistical weight
     part->q = new FPinterp[npmax];
@@ -68,13 +78,27 @@ void particle_allocate(struct parameters* param, struct particles* part, int is)
 /** deallocate */
 void particle_deallocate(struct particles* part)
 {
-    // deallocate particle variables
+    // deallocate position on cpu
     cudaFree(part->x);
     cudaFree(part->y);
     cudaFree(part->z);
+
+    // deallocate velocity on cpu
     cudaFree(part->u);
     cudaFree(part->v);
     cudaFree(part->w);
+
+    // deallocate position on gpu
+    cudaFree(part->x_gpu);
+    cudaFree(part->y_gpu);
+    cudaFree(part->z_gpu);
+
+    // deallocate velocity on gpu
+    cudaFree(part->u_gpu);
+    cudaFree(part->v_gpu);
+    cudaFree(part->w_gpu);
+
+    // deallocate charge
     delete[] part->q;
 }
 
@@ -285,54 +309,39 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
     // print species and subcycling
 	std::cout << "*** GPU MOVER with SUBCYCLYING " << param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
 
-	FPpart  *Px, *Py, *Pz;
-	FPpart  *Pu, *Pv, *Pw;
-	FPfield *Bx, *By, *Bz;
-	FPfield *Ex, *Ey, *Ez;
-	FPfield *Nx, *Ny, *Nz;
+    // copy particle position from cpu to gpu
+    cudaMemcpy(part->x_gpu, part->x, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+    cudaMemcpy(part->y_gpu, part->y, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+    cudaMemcpy(part->z_gpu, part->z, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
 
-    // allocate resources on the gpu
-	cudaMalloc(&Px, sizeof(FPpart) * part->npmax);
-	cudaMalloc(&Py, sizeof(FPpart) * part->npmax);
-	cudaMalloc(&Pz, sizeof(FPpart) * part->npmax);
-	cudaMalloc(&Pu, sizeof(FPpart) * part->npmax);
-	cudaMalloc(&Pv, sizeof(FPpart) * part->npmax);
-	cudaMalloc(&Pw, sizeof(FPpart) * part->npmax);
-	cudaMalloc(&Bx, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
-	cudaMalloc(&By, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
-	cudaMalloc(&Bz, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
-	cudaMalloc(&Ex, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
-	cudaMalloc(&Ey, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
-	cudaMalloc(&Ez, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
-	cudaMalloc(&Nx, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
-	cudaMalloc(&Ny, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
-	cudaMalloc(&Nz, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+    // copy particle velocity from cpu to gpu
+    cudaMemcpy(part->u_gpu, part->u, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+    cudaMemcpy(part->v_gpu, part->v, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+    cudaMemcpy(part->w_gpu, part->w, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
 
-    // copy data from host to device
-	cudaMemcpy(Px, part->x, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-	cudaMemcpy(Py, part->y, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-	cudaMemcpy(Pz, part->z, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-	cudaMemcpy(Pu, part->u, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-	cudaMemcpy(Pv, part->v, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-	cudaMemcpy(Pw, part->w, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-	cudaMemcpy(Bx, field->Bxn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-	cudaMemcpy(By, field->Byn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-	cudaMemcpy(Bz, field->Bzn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-	cudaMemcpy(Ex, field->Ex_flat,  sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-	cudaMemcpy(Ey, field->Ey_flat,  sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-	cudaMemcpy(Ez, field->Ez_flat,  sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-	cudaMemcpy(Nx, grd->XN_flat,    sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-	cudaMemcpy(Ny, grd->YN_flat,    sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
-	cudaMemcpy(Nz, grd->ZN_flat,    sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    // copy electric field from cpu to gpu
+    cudaMemcpy(field->Ex_gpu, field->Ex_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(field->Ey_gpu, field->Ey_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(field->Ez_gpu, field->Ez_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+
+    // copy magnetic field from cpu to gpu
+    cudaMemcpy(field->Bxn_gpu, field->Bxn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(field->Byn_gpu, field->Byn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(field->Bzn_gpu, field->Bzn_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+
+    // copy grid points from cpu to gpu
+    cudaMemcpy(grd->XN_gpu, grd->XN_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(grd->YN_gpu, grd->YN_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
+    cudaMemcpy(grd->ZN_gpu, grd->ZN_flat, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn, cudaMemcpyHostToDevice);
 
     // execute particle movement simulation on device
 	int threads = 64;
 	int blocks = (part->nop + threads - 1) / threads;
-	kernel_mover_PC<<<blocks, threads>>>(Px, Py, Pz,
-		                                 Pu, Pv, Pw,
-		                                 Ex, Ey, Ez,
-		                                 Bx, By, Bz,
-		                                 Nx, Ny, Nz,
+	kernel_mover_PC<<<blocks, threads>>>(part->x_gpu, part->y_gpu, part->z_gpu,
+		                                 part->u_gpu, part->v_gpu, part->w_gpu,
+		                                 field->Ex_gpu, field->Ey_gpu, field->Ez_gpu,
+		                                 field->Bxn_gpu, field->Byn_gpu, field->Bzn_gpu,
+		                                 grd->XN_gpu, grd->YN_gpu, grd->ZN_gpu,
 		                                 part->qom, param->dt, param->c,
 		                                 grd->invdx, grd->invdy, grd->invdz, grd->invVOL,
 		                                 grd->xStart, grd->yStart, grd->zStart,
@@ -344,30 +353,15 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
     // wait for device to complete execution
 	cudaDeviceSynchronize();
 
-    // copy data from device to host
-	cudaMemcpy(part->x, Px, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
-	cudaMemcpy(part->y, Py, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
-	cudaMemcpy(part->z, Pz, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
-	cudaMemcpy(part->u, Pu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
-	cudaMemcpy(part->v, Pv, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
-	cudaMemcpy(part->w, Pw, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    // copy particle position from gpu to cpu
+    cudaMemcpy(part->x, part->x_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    cudaMemcpy(part->y, part->y_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    cudaMemcpy(part->z, part->z_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
 
-    // deallocate resources on the gpu
-	cudaFree(Px);
-	cudaFree(Py);
-	cudaFree(Pz);
-	cudaFree(Pu);
-	cudaFree(Pv);
-	cudaFree(Pw);
-	cudaFree(Bx);
-	cudaFree(By);
-	cudaFree(Bz);
-	cudaFree(Ex);
-	cudaFree(Ey);
-	cudaFree(Ez);
-	cudaFree(Nx);
-	cudaFree(Ny);
-	cudaFree(Nz);
+    // copy particle velocity from gpu to cpu
+    cudaMemcpy(part->u, part->u_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    cudaMemcpy(part->v, part->v_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    cudaMemcpy(part->w, part->w_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
 
 	return(0);
 }
