@@ -78,12 +78,6 @@ void particle_deallocate(struct particles* part)
     delete[] part->q;
 }
 
-/** particle mover */
-int mover_PC(struct particles* part, struct EMfield* field, struct grid* grd, struct parameters* param)
-{
-    return mover_PC_gpu(part, field, grd, param);
-}
-
 /** particle mover on cpu */
 int mover_PC_cpu(struct particles* part, struct EMfield* field, struct grid* grd, struct parameters* param)
 {
