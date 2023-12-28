@@ -73,6 +73,22 @@ int main(int argc, char **argv){
     // Initialization
     initGEM(&param,&grd,&field,&field_aux,part,ids);
 
+    // copy position for each particle species from cpu to gpu
+    for (int i = 0; i != param.ns; ++i)
+    {
+        cudaMemcpy(part[i].x_gpu, part[i].x, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+        cudaMemcpy(part[i].y_gpu, part[i].y, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+        cudaMemcpy(part[i].z_gpu, part[i].z, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+    }
+
+    // copy velocity for each particle species from cpu to gpu
+    for (int i = 0; i != param.ns; ++i)
+    {
+        cudaMemcpy(part[i].u_gpu, part[i].u, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+        cudaMemcpy(part[i].v_gpu, part[i].v, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+        cudaMemcpy(part[i].w_gpu, part[i].w, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
+    }
+
     // copy electric field from cpu to gpu
     cudaMemcpy(field.Ex_gpu, field.Ex_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(field.Ey_gpu, field.Ey_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);

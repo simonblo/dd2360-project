@@ -309,16 +309,6 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
     // print species and subcycling
 	std::cout << "*** GPU MOVER with SUBCYCLYING " << param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
 
-    // copy particle position from cpu to gpu
-    cudaMemcpy(part->x_gpu, part->x, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-    cudaMemcpy(part->y_gpu, part->y, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-    cudaMemcpy(part->z_gpu, part->z, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-
-    // copy particle velocity from cpu to gpu
-    cudaMemcpy(part->u_gpu, part->u, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-    cudaMemcpy(part->v_gpu, part->v, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-    cudaMemcpy(part->w_gpu, part->w, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
-
     // execute particle movement simulation on device
 	int threads = 64;
 	int blocks = (part->nop + threads - 1) / threads;
