@@ -304,42 +304,43 @@ int mover_PC_cpu(struct particles* part, struct EMfield* field, struct grid* grd
 }
 
 /** particle mover on gpu */
-int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd, struct parameters* param, cudaStream_t* stream, int streamCount)
+int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd, struct parameters* param, cudaStream_t* stream)
 {
     // print species and subcycling
 	std::cout << "*** GPU MOVER with SUBCYCLYING " << param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
-
-    // partition the particle array into 8 equally sized partitions, which will be distributed equally amongst the available streams
-    /*for (int i = 0; i != 8; ++i)
-    {
-
-    }*/
-
-    // dispatch gpu computation of particle movement simulation
+    
+    int stride  = part->nop / 4;
 	int threads = 64;
-	int blocks = (part->nop + threads - 1) / threads;
-	kernel_mover_PC<<<blocks, threads, 0, stream[0]>>>(part->x_gpu, part->y_gpu, part->z_gpu,
-		                                               part->u_gpu, part->v_gpu, part->w_gpu,
-		                                               field->Ex_gpu, field->Ey_gpu, field->Ez_gpu,
-		                                               field->Bxn_gpu, field->Byn_gpu, field->Bzn_gpu,
-		                                               grd->XN_gpu, grd->YN_gpu, grd->ZN_gpu,
-		                                               part->qom, param->dt, param->c,
-		                                               grd->invdx, grd->invdy, grd->invdz, grd->invVOL,
-		                                               grd->xStart, grd->yStart, grd->zStart,
-		                                               grd->Lx, grd->Ly, grd->Lz,
-		                                               param->PERIODICX, param->PERIODICY, param->PERIODICZ,
-		                                               grd->nxn, grd->nyn, grd->nzn,
-		                                               part->nop, part->n_sub_cycles, part->NiterMover);
+	int blocks  = (stride + threads - 1) / threads;
 
-    // other computations on cpu read from particle position, so copy from gpu to cpu to get most recent values
-    cudaMemcpyAsync(part->x, part->x_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
-    cudaMemcpyAsync(part->y, part->y_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
-    cudaMemcpyAsync(part->z, part->z_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
+    // partition the particle array into 4 equally sized partitions, which will be distributed equally amongst the available streams
+    for (int i = 0; i != 4; ++i)
+    {
+        // dispatch gpu computation of particle movement simulation
+        kernel_mover_PC<<<blocks, threads, 0, stream[i]>>>(part->x_gpu, part->y_gpu, part->z_gpu,
+		                                                   part->u_gpu, part->v_gpu, part->w_gpu,
+		                                                   field->Ex_gpu, field->Ey_gpu, field->Ez_gpu,
+		                                                   field->Bxn_gpu, field->Byn_gpu, field->Bzn_gpu,
+		                                                   grd->XN_gpu, grd->YN_gpu, grd->ZN_gpu,
+		                                                   part->qom, param->dt, param->c,
+		                                                   grd->invdx, grd->invdy, grd->invdz, grd->invVOL,
+		                                                   grd->xStart, grd->yStart, grd->zStart,
+		                                                   grd->Lx, grd->Ly, grd->Lz,
+		                                                   param->PERIODICX, param->PERIODICY, param->PERIODICZ,
+		                                                   grd->nxn, grd->nyn, grd->nzn,
+		                                                   part->nop, part->n_sub_cycles, part->NiterMover,
+                                                           i * stride);
 
-    // // other computations on cpu read from particle velocity, so copy from gpu to cpu to get most recent values
-    cudaMemcpyAsync(part->u, part->u_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
-    cudaMemcpyAsync(part->v, part->v_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
-    cudaMemcpyAsync(part->w, part->w_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
+        // other computations on cpu read from particle position, so copy from gpu to cpu to get most recent values
+        cudaMemcpyAsync(&part->x[i * stride], &part->x_gpu[i * stride], sizeof(FPpart) * stride, cudaMemcpyDeviceToHost, stream[i]);
+        cudaMemcpyAsync(&part->y[i * stride], &part->y_gpu[i * stride], sizeof(FPpart) * stride, cudaMemcpyDeviceToHost, stream[i]);
+        cudaMemcpyAsync(&part->z[i * stride], &part->z_gpu[i * stride], sizeof(FPpart) * stride, cudaMemcpyDeviceToHost, stream[i]);
+
+        // other computations on cpu read from particle velocity, so copy from gpu to cpu to get most recent values
+        cudaMemcpyAsync(&part->u[i * stride], &part->u_gpu[i * stride], sizeof(FPpart) * stride, cudaMemcpyDeviceToHost, stream[i]);
+        cudaMemcpyAsync(&part->v[i * stride], &part->v_gpu[i * stride], sizeof(FPpart) * stride, cudaMemcpyDeviceToHost, stream[i]);
+        cudaMemcpyAsync(&part->w[i * stride], &part->w_gpu[i * stride], sizeof(FPpart) * stride, cudaMemcpyDeviceToHost, stream[i]);
+    }
 
 	return(0);
 }
@@ -356,10 +357,11 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 	                            double Lx, double Ly, double Lz,
 	                            bool PERIODICX, bool PERIODICY, bool PERIODICZ,
 	                            int nxn, int nyn, int nzn,
-	                            int nop, int nsc, int nim)
+	                            int nop, int nsc, int nim,
+                                int offset)
 {
     // global thread index for particle arrays
-	int tid = threadIdx.x + blockIdx.x * blockDim.x;
+	int tid = threadIdx.x + blockIdx.x * blockDim.x + offset;
 
 	if (tid < nop)
 	{
