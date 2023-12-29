@@ -105,9 +105,9 @@ int main(int argc, char **argv){
     cudaMemcpy(grd.ZN_gpu, grd.ZN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
 
     // create 4 streams, 1 for each species, in order to achieve optimal parallelization for compute and readback
-    cudaStream_t stream[4][4];
+    cudaStream_t stream[4][16];
     for (int i = 0; i != 4; ++i)
-        for (int j = 0; j != 4; ++j)
+        for (int j = 0; j != 16; ++j)
             cudaStreamCreate(&stream[i][j]);
     
     // **********************************************************//
@@ -164,7 +164,7 @@ int main(int argc, char **argv){
 
     // no more gpu work do to, so release all of the streams
     for (int i = 0; i != 4; ++i)
-        for (int j = 0; j != 4; ++j)
+        for (int j = 0; j != 16; ++j)
             cudaStreamDestroy(stream[i][j]);
     
     /// Release the resources
