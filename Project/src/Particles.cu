@@ -309,7 +309,7 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
     // print species and subcycling
 	std::cout << "*** GPU MOVER with SUBCYCLYING " << param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
 
-    // execute particle movement simulation on device
+    // dispatch gpu computation of particle movement simulation
 	int threads = 64;
 	int blocks = (part->nop + threads - 1) / threads;
 	kernel_mover_PC<<<blocks, threads>>>(part->x_gpu, part->y_gpu, part->z_gpu,
@@ -325,15 +325,15 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
 		                                 grd->nxn, grd->nyn, grd->nzn,
 		                                 part->nop, part->n_sub_cycles, part->NiterMover);
 
-    // wait for device to complete execution
+    // wait for gpu to complete execution
 	cudaDeviceSynchronize();
 
-    // copy particle position from gpu to cpu
+    // other computations on cpu read from particle position, so copy from gpu to cpu to get most recent values
     cudaMemcpy(part->x, part->x_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
     cudaMemcpy(part->y, part->y_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
     cudaMemcpy(part->z, part->z_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
 
-    // copy particle velocity from gpu to cpu
+    // // other computations on cpu read from particle velocity, so copy from gpu to cpu to get most recent values
     cudaMemcpy(part->u, part->u_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
     cudaMemcpy(part->v, part->v_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
     cudaMemcpy(part->w, part->w_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);

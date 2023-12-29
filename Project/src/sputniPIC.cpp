@@ -73,7 +73,7 @@ int main(int argc, char **argv){
     // Initialization
     initGEM(&param,&grd,&field,&field_aux,part,ids);
 
-    // copy position for each particle species from cpu to gpu
+    // particle position is only written by gpu, so upload initial values only once from cpu to gpu before simulation starts
     for (int i = 0; i != param.ns; ++i)
     {
         cudaMemcpy(part[i].x_gpu, part[i].x, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
@@ -81,7 +81,7 @@ int main(int argc, char **argv){
         cudaMemcpy(part[i].z_gpu, part[i].z, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
     }
 
-    // copy velocity for each particle species from cpu to gpu
+    // particle velocity is only written by gpu, so upload initial values only once from cpu to gpu before simulation starts
     for (int i = 0; i != param.ns; ++i)
     {
         cudaMemcpy(part[i].u_gpu, part[i].u, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
@@ -89,17 +89,17 @@ int main(int argc, char **argv){
         cudaMemcpy(part[i].w_gpu, part[i].w, sizeof(FPpart) * part->npmax, cudaMemcpyHostToDevice);
     }
 
-    // copy electric field from cpu to gpu
+    // electric field does not change during simulation, so copy only once from cpu to gpu before simulation starts
     cudaMemcpy(field.Ex_gpu, field.Ex_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(field.Ey_gpu, field.Ey_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(field.Ez_gpu, field.Ez_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
 
-    // copy magnetic field from cpu to gpu
+    // magnetic field does not change during simulation, so copy only once from cpu to gpu before simulation starts
     cudaMemcpy(field.Bxn_gpu, field.Bxn_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(field.Byn_gpu, field.Byn_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(field.Bzn_gpu, field.Bzn_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
 
-    // copy grid points from cpu to gpu
+    // grid points does not change during simulation, so copy only once from cpu to gpu before simulation starts
     cudaMemcpy(grd.XN_gpu, grd.XN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(grd.YN_gpu, grd.YN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(grd.ZN_gpu, grd.ZN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
