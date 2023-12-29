@@ -304,39 +304,42 @@ int mover_PC_cpu(struct particles* part, struct EMfield* field, struct grid* grd
 }
 
 /** particle mover on gpu */
-int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd, struct parameters* param)
+int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd, struct parameters* param, cudaStream_t* stream, int streamCount)
 {
     // print species and subcycling
 	std::cout << "*** GPU MOVER with SUBCYCLYING " << param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
 
+    // partition the particle array into 8 equally sized partitions, which will be distributed equally amongst the available streams
+    /*for (int i = 0; i != 8; ++i)
+    {
+
+    }*/
+
     // dispatch gpu computation of particle movement simulation
 	int threads = 64;
 	int blocks = (part->nop + threads - 1) / threads;
-	kernel_mover_PC<<<blocks, threads>>>(part->x_gpu, part->y_gpu, part->z_gpu,
-		                                 part->u_gpu, part->v_gpu, part->w_gpu,
-		                                 field->Ex_gpu, field->Ey_gpu, field->Ez_gpu,
-		                                 field->Bxn_gpu, field->Byn_gpu, field->Bzn_gpu,
-		                                 grd->XN_gpu, grd->YN_gpu, grd->ZN_gpu,
-		                                 part->qom, param->dt, param->c,
-		                                 grd->invdx, grd->invdy, grd->invdz, grd->invVOL,
-		                                 grd->xStart, grd->yStart, grd->zStart,
-		                                 grd->Lx, grd->Ly, grd->Lz,
-		                                 param->PERIODICX, param->PERIODICY, param->PERIODICZ,
-		                                 grd->nxn, grd->nyn, grd->nzn,
-		                                 part->nop, part->n_sub_cycles, part->NiterMover);
-
-    // wait for gpu to complete execution
-	cudaDeviceSynchronize();
+	kernel_mover_PC<<<blocks, threads, 0, stream[0]>>>(part->x_gpu, part->y_gpu, part->z_gpu,
+		                                               part->u_gpu, part->v_gpu, part->w_gpu,
+		                                               field->Ex_gpu, field->Ey_gpu, field->Ez_gpu,
+		                                               field->Bxn_gpu, field->Byn_gpu, field->Bzn_gpu,
+		                                               grd->XN_gpu, grd->YN_gpu, grd->ZN_gpu,
+		                                               part->qom, param->dt, param->c,
+		                                               grd->invdx, grd->invdy, grd->invdz, grd->invVOL,
+		                                               grd->xStart, grd->yStart, grd->zStart,
+		                                               grd->Lx, grd->Ly, grd->Lz,
+		                                               param->PERIODICX, param->PERIODICY, param->PERIODICZ,
+		                                               grd->nxn, grd->nyn, grd->nzn,
+		                                               part->nop, part->n_sub_cycles, part->NiterMover);
 
     // other computations on cpu read from particle position, so copy from gpu to cpu to get most recent values
-    cudaMemcpy(part->x, part->x_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
-    cudaMemcpy(part->y, part->y_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
-    cudaMemcpy(part->z, part->z_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    cudaMemcpyAsync(part->x, part->x_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
+    cudaMemcpyAsync(part->y, part->y_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
+    cudaMemcpyAsync(part->z, part->z_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
 
     // // other computations on cpu read from particle velocity, so copy from gpu to cpu to get most recent values
-    cudaMemcpy(part->u, part->u_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
-    cudaMemcpy(part->v, part->v_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
-    cudaMemcpy(part->w, part->w_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost);
+    cudaMemcpyAsync(part->u, part->u_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
+    cudaMemcpyAsync(part->v, part->v_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
+    cudaMemcpyAsync(part->w, part->w_gpu, sizeof(FPpart) * part->npmax, cudaMemcpyDeviceToHost, stream[0]);
 
 	return(0);
 }

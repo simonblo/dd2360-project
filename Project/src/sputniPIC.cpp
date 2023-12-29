@@ -103,6 +103,11 @@ int main(int argc, char **argv){
     cudaMemcpy(grd.XN_gpu, grd.XN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(grd.YN_gpu, grd.YN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(grd.ZN_gpu, grd.ZN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
+
+    // create two streams, this is sufficient since the only available parallelization is for compute and readback
+    cudaStream_t stream[2];
+    cudaError_t error0 = cudaStreamCreate(&stream[0]);
+    cudaError_t error1 = cudaStreamCreate(&stream[1]);
     
     // **********************************************************//
     // **** Start the Simulation!  Cycle index start from 1  *** //
@@ -122,9 +127,10 @@ int main(int argc, char **argv){
         // implicit mover
         iMover = cpuSecond(); // start timer for mover
         for (int is=0; is < param.ns; is++)
-            mover_PC_gpu(&part[is],&field,&grd,&param);
+            mover_PC_gpu(&part[is],&field,&grd,&param, stream, 2);
+        // wait for gpu to complete all work before proceeding with next steps in simulation
+        cudaDeviceSynchronize();
         eMover += (cpuSecond() - iMover); // stop timer for mover
-        
         
         
         

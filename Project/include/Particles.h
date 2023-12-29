@@ -61,7 +61,7 @@ void particle_deallocate(struct particles*);
 
 /** particle mover */
 int mover_PC_cpu(struct particles*, struct EMfield*, struct grid*, struct parameters*);
-int mover_PC_gpu(struct particles*, struct EMfield*, struct grid*, struct parameters*);
+int mover_PC_gpu(struct particles*, struct EMfield*, struct grid*, struct parameters*, cudaStream_t* stream, int streamCount);
 
 /** particle mover kernel */
 __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
