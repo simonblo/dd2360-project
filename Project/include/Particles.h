@@ -4,52 +4,53 @@
 #include <math.h>
 
 #include "Alloc.h"
+#include "EMfield.h"
+#include "Grid.h"
+#include "InterpDensSpecies.h"
 #include "Parameters.h"
 #include "PrecisionTypes.h"
-#include "Grid.h"
-#include "EMfield.h"
-#include "InterpDensSpecies.h"
 
-struct particles {
-    
-    /** species ID: 0, 1, 2 , ... */
+struct particles
+{
+    // species ID: 0, 1, 2 , ...
     int species_ID;
     
-    /** maximum number of particles of this species on this domain. used for memory allocation */
+    // maximum number of particles of this species on this domain. used for memory allocation
     long npmax;
-    /** number of particles of this species on this domain */
+    // number of particles of this species on this domain
     long nop;
     
-    /** Electron and ions have different number of iterations: ions moves slower than ions */
+    // Electron and ions have different number of iterations: ions moves slower than ions
     int NiterMover;
-    /** number of particle of subcycles in the mover */
+    // number of particle of subcycles in the mover
     int n_sub_cycles;
     
-    
-    /** number of particles per cell */
+    // number of particles per cell
     int npcel;
-    /** number of particles per cell - X direction */
+    // number of particles per cell - X direction
     int npcelx;
-    /** number of particles per cell - Y direction */
+    // number of particles per cell - Y direction
     int npcely;
-    /** number of particles per cell - Z direction */
+    // number of particles per cell - Z direction
     int npcelz;
     
-    
-    /** charge over mass ratio */
+    // charge over mass ratio
     FPpart qom;
     
-    /* drift and thermal velocities for this species */
+    //drift and thermal velocities for this species
     FPpart u0, v0, w0;
     FPpart uth, vth, wth;
     
-    /** particle arrays: 1D arrays[npmax] */
-    FPpart* x; FPpart*  y; FPpart* z; FPpart* u; FPpart* v; FPpart* w;
-    /** q must have precision of interpolated quantities: typically double. Not used in mover */
+    // 1D arrays[npmax] for particles on cpu
+    FPpart *x, *y, *z;
+    FPpart *u, *v, *w;
+
+    // 1D arrays[npmax] for particles on gpu
+    FPpart *x_gpu, *y_gpu, *z_gpu;
+    FPpart *u_gpu, *v_gpu, *w_gpu;
+
+    // q must have precision of interpolated quantities: typically double. Not used in mover
     FPinterp* q;
-    
-    
-    
 };
 
 /** allocate particle arrays */

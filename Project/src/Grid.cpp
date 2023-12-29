@@ -4,7 +4,6 @@
 /** Set up the grid quantities */
 void setGrid(struct parameters* param, struct grid* grd)
 {
-    
     ///////////////////////////////
     // add 2 for the guard cells
     // useful for BC and potential domain decomposition
@@ -46,15 +45,23 @@ void setGrid(struct parameters* param, struct grid* grd)
     grd->PERIODICY = param->PERIODICY;
     grd->PERIODICZ = param->PERIODICZ;
     
-    // allocate grid points - nodes
+    // allocate grid points on cpu with pinned memory
     grd->XN = newPinnedArr3<FPfield>(&grd->XN_flat, grd->nxn, grd->nyn, grd->nzn);
     grd->YN = newPinnedArr3<FPfield>(&grd->YN_flat, grd->nxn, grd->nyn, grd->nzn);
     grd->ZN = newPinnedArr3<FPfield>(&grd->ZN_flat, grd->nxn, grd->nyn, grd->nzn);
+
+    // allocate grid points on gpu
+    cudaMalloc(&grd->XN_gpu, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+    cudaMalloc(&grd->YN_gpu, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
+    cudaMalloc(&grd->ZN_gpu, sizeof(FPfield) * grd->nxn * grd->nyn * grd->nzn);
     
     // calculate the coordinates - Nodes
-    for (int i = 0; i < grd->nxn; i++) {
-        for (int j = 0; j < grd->nyn; j++) {
-            for (int k = 0; k < grd->nzn; k++) {
+    for (int i = 0; i < grd->nxn; i++)
+    {
+        for (int j = 0; j < grd->nyn; j++)
+        {
+            for (int k = 0; k < grd->nzn; k++)
+            {
                 grd->XN[i][j][k] = (FPfield) (grd->xStart + (i - 1) * grd->dx);
                 grd->YN[i][j][k] = (FPfield) (grd->yStart + (j - 1) * grd->dy);
                 grd->ZN[i][j][k] = (FPfield) (grd->zStart + (k - 1) * grd->dz);
@@ -74,12 +81,18 @@ void printGrid(struct grid* grd)
     std::cout << std::endl;
 }
 
-/** allocate electric and magnetic field */
+/** deallocate electric and magnetic field */
 void grid_deallocate(struct grid* grd)
 {
+    // deallocate grid points on cpu
     delPinnedArr3(grd->XN);
     delPinnedArr3(grd->YN);
     delPinnedArr3(grd->ZN);
+
+    // deallocate grid points on gpu
+    cudaFree(grd->XN_gpu);
+    cudaFree(grd->YN_gpu);
+    cudaFree(grd->ZN_gpu);
 }
 
 
