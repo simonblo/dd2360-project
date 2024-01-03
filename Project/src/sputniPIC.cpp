@@ -103,6 +103,12 @@ int main(int argc, char **argv){
     cudaMemcpy(grd.XN_gpu, grd.XN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(grd.YN_gpu, grd.YN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
     cudaMemcpy(grd.ZN_gpu, grd.ZN_flat, sizeof(FPfield) * grd.nxn * grd.nyn * grd.nzn, cudaMemcpyHostToDevice);
+
+    // create 4 streams, 1 for each species, in order to achieve optimal parallelization for compute and readback
+    cudaStream_t stream[4][16];
+    for (int i = 0; i != 4; ++i)
+        for (int j = 0; j != 16; ++j)
+            cudaStreamCreate(&stream[i][j]);
     
     // **********************************************************//
     // **** Start the Simulation!  Cycle index start from 1  *** //
@@ -111,7 +117,7 @@ int main(int argc, char **argv){
         
         std::cout << std::endl;
         std::cout << "***********************" << std::endl;
-        std::cout << "   cycle = " << cycle << std::endl;
+        std::cout << "   cycle = " << cycle    << std::endl;
         std::cout << "***********************" << std::endl;
     
         // set to zero the densities - needed for interpolation
@@ -122,9 +128,10 @@ int main(int argc, char **argv){
         // implicit mover
         iMover = cpuSecond(); // start timer for mover
         for (int is=0; is < param.ns; is++)
-            mover_PC_gpu(&part[is],&field,&grd,&param);
+            mover_PC_gpu(&part[is], &field, &grd, &param, stream[is]);
+        // wait for gpu to complete all work before proceeding with next steps in simulation
+        cudaDeviceSynchronize();
         eMover += (cpuSecond() - iMover); // stop timer for mover
-        
         
         
         
@@ -154,6 +161,11 @@ int main(int argc, char **argv){
         
     
     }  // end of one PIC cycle
+
+    // no more gpu work do to, so release all of the streams
+    for (int i = 0; i != 4; ++i)
+        for (int j = 0; j != 16; ++j)
+            cudaStreamDestroy(stream[i][j]);
     
     /// Release the resources
     // deallocate field
