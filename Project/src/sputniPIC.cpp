@@ -117,7 +117,7 @@ int main(int argc, char **argv){
         
         std::cout << std::endl;
         std::cout << "***********************" << std::endl;
-        std::cout << "   cycle = " << cycle << std::endl;
+        std::cout << "   cycle = " << cycle    << std::endl;
         std::cout << "***********************" << std::endl;
     
         // set to zero the densities - needed for interpolation
