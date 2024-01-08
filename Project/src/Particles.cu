@@ -309,12 +309,12 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
     // print species and subcycling
 	std::cout << "*** GPU MOVER with SUBCYCLYING " << param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
     
-    int stride  = part->nop / 16;
+    int stride  = part->nop / 1;
 	int threads = 64;
 	int blocks  = (stride + threads - 1) / threads;
 
     // partition the particle array into 4 equally sized partitions, which will be distributed equally amongst the available streams
-    for (int i = 0; i != 16; ++i)
+    for (int i = 0; i != 1; ++i)
     {
         // dispatch gpu computation of particle movement simulation
         kernel_mover_PC<<<blocks, threads, 0, stream[i]>>>(part->x_gpu, part->y_gpu, part->z_gpu,
