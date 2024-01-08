@@ -351,10 +351,10 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 	                            FPfield* Ex, FPfield* Ey, FPfield* Ez,
 	                            FPfield* Bx, FPfield* By, FPfield* Bz,
 	                            FPfield* Nx, FPfield* Ny, FPfield* Nz,
-	                            FPpart qom, double dt, double c,
+	                            FPpart qom, FPpart dt, FPpart c,
 	                            FPfield invdx, FPfield invdy, FPfield invdz, FPfield invVOL,
-	                            double xStart, double yStart, double zStart,
-	                            double Lx, double Ly, double Lz,
+	                            FPpart xStart, FPpart yStart, FPpart zStart,
+	                            FPpart Lx, FPpart Ly, FPpart Lz,
 	                            bool PERIODICX, bool PERIODICY, bool PERIODICZ,
 	                            int nxn, int nyn, int nzn,
 	                            int nop, int nsc, int nim,
@@ -366,8 +366,8 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 	if (tid < nop)
 	{
         // auxiliary variables
-		FPpart dt_sub_cycling = dt / (double)nsc;
-		FPpart dto2 = 0.5 * dt_sub_cycling;
+		FPpart dt_sub_cycling = dt / (FPpart)nsc;
+		FPpart dto2 = (FPpart)0.5 * dt_sub_cycling;
 		FPpart qomdt2 = qom * dto2 / c;
 
         // intermediate particle position and velocity
