@@ -351,10 +351,10 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 	                            FPfield* Ex, FPfield* Ey, FPfield* Ez,
 	                            FPfield* Bx, FPfield* By, FPfield* Bz,
 	                            FPfield* Nx, FPfield* Ny, FPfield* Nz,
-	                            FPpart qom, double dt, double c,
+	                            FPpart qom, FPpart dt, FPpart c,
 	                            FPfield invdx, FPfield invdy, FPfield invdz, FPfield invVOL,
-	                            double xStart, double yStart, double zStart,
-	                            double Lx, double Ly, double Lz,
+	                            FPpart xStart, FPpart yStart, FPpart zStart,
+	                            FPpart Lx, FPpart Ly, FPpart Lz,
 	                            bool PERIODICX, bool PERIODICY, bool PERIODICZ,
 	                            int nxn, int nyn, int nzn,
 	                            int nop, int nsc, int nim,
@@ -366,8 +366,8 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 	if (tid < nop)
 	{
         // auxiliary variables
-		FPpart dt_sub_cycling = dt / (double)nsc;
-		FPpart dto2 = 0.5 * dt_sub_cycling;
+		FPpart dt_sub_cycling = dt / (FPpart)nsc;
+		FPpart dto2 = (FPpart)0.5 * dt_sub_cycling;
 		FPpart qomdt2 = qom * dto2 / c;
 
         // intermediate particle position and velocity
@@ -435,7 +435,7 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 
                 // end interpolation
 				FPpart omdtsq = qomdt2 * qomdt2 * (Bxl * Bxl + Byl * Byl + Bzl * Bzl);
-				FPpart denom  = 1.0 / (1.0 + omdtsq);
+				FPpart denom  = (FPpart)1.0 / ((FPpart)1.0 + omdtsq);
 
                 // solve the position equation
 				FPpart ut = Pu[tid] + qomdt2 * Exl;
@@ -455,9 +455,9 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 			}
 
 			// update final velocity
-			Pu[tid] = 2.0 * uptilde - Pu[tid];
-			Pv[tid] = 2.0 * vptilde - Pv[tid];
-			Pw[tid] = 2.0 * wptilde - Pw[tid];
+			Pu[tid] = (FPpart)2.0 * uptilde - Pu[tid];
+			Pv[tid] = (FPpart)2.0 * vptilde - Pv[tid];
+			Pw[tid] = (FPpart)2.0 * wptilde - Pw[tid];
 
 			// update final position
 			Px[tid] = xptilde + uptilde * dt_sub_cycling;
@@ -477,11 +477,11 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 				else
 				{
 					Pu[tid] = -Pu[tid];
-					Px[tid] = 2 * Lx - Px[tid];
+					Px[tid] = (FPpart)2.0 * Lx - Px[tid];
 				}
 			}
 
-			if (Px[tid] < 0)
+			if (Px[tid] < (FPpart)0.0)
 			{
                 // PERIODIC
 				if (PERIODICX == true)
@@ -510,11 +510,11 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 				else
 				{
 					Pv[tid] = -Pv[tid];
-					Py[tid] = 2 * Ly - Py[tid];
+					Py[tid] = (FPpart)2.0 * Ly - Py[tid];
 				}
 			}
 
-			if (Py[tid] < 0)
+			if (Py[tid] < (FPpart)0.0)
 			{
                 // PERIODIC
 				if (PERIODICY == true)
@@ -543,11 +543,11 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 				else
 				{
 					Pw[tid] = -Pw[tid];
-					Pz[tid] = 2 * Lz - Pz[tid];
+					Pz[tid] = (FPpart)2.0 * Lz - Pz[tid];
 				}
 			}
 
-			if (Pz[tid] < 0)
+			if (Pz[tid] < (FPpart)0.0)
 			{
                 // PERIODIC
 				if (PERIODICZ == true)
