@@ -124,8 +124,8 @@ int main(int argc, char **argv)
         // implicit mover
         iMover = cpuSecond(); // start timer for mover
         for (int is=0; is < param.ns; is++)
-            mover_PC_gpu(&part[is], &field, &grd, &param, stream[is]);
-        // wait for gpu to complete all work before proceeding with next steps in simulation
+            mover_PC_gpu(&part[is], &field, &grd, &param, stream[is]); // particle movement on the gpu
+        // cpu needs to wait for gpu to complete all work before proceeding with next steps in simulation
         cudaDeviceSynchronize();
         eMover += (cpuSecond() - iMover); // stop timer for mover
 

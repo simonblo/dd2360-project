@@ -52,22 +52,22 @@ void particle_allocate(struct parameters* param, struct particles* part, int is)
 
     long npmax = part->npmax;
 
-    // allocate position on cpu
+    // allocate particle position arrays on cpu
     cudaHostAlloc(&part->x, sizeof(FPpart) * npmax, cudaHostAllocDefault);
     cudaHostAlloc(&part->y, sizeof(FPpart) * npmax, cudaHostAllocDefault);
     cudaHostAlloc(&part->z, sizeof(FPpart) * npmax, cudaHostAllocDefault);
 
-    // allocate velocity on cpu
+    // allocate particle velocity arrays on cpu
     cudaHostAlloc(&part->u, sizeof(FPpart) * npmax, cudaHostAllocDefault);
     cudaHostAlloc(&part->v, sizeof(FPpart) * npmax, cudaHostAllocDefault);
     cudaHostAlloc(&part->w, sizeof(FPpart) * npmax, cudaHostAllocDefault);
 
-    // allocate position on gpu
+    // allocate particle position arrays on gpu
     cudaMalloc(&part->x_gpu, sizeof(FPpart) * npmax);
     cudaMalloc(&part->y_gpu, sizeof(FPpart) * npmax);
     cudaMalloc(&part->z_gpu, sizeof(FPpart) * npmax);
 
-    // allocate velocity on gpu
+    // allocate particle velocity arrays on gpu
     cudaMalloc(&part->u_gpu, sizeof(FPpart) * npmax);
     cudaMalloc(&part->v_gpu, sizeof(FPpart) * npmax);
     cudaMalloc(&part->w_gpu, sizeof(FPpart) * npmax);
@@ -79,22 +79,22 @@ void particle_allocate(struct parameters* param, struct particles* part, int is)
 /** deallocate */
 void particle_deallocate(struct particles* part)
 {
-    // deallocate position on cpu
+    // deallocate particle position arrays on cpu
     cudaFree(part->x);
     cudaFree(part->y);
     cudaFree(part->z);
 
-    // deallocate velocity on cpu
+    // deallocate particle velocity arrays on cpu
     cudaFree(part->u);
     cudaFree(part->v);
     cudaFree(part->w);
 
-    // deallocate position on gpu
+    // deallocate particle position arrays on gpu
     cudaFree(part->x_gpu);
     cudaFree(part->y_gpu);
     cudaFree(part->z_gpu);
 
-    // deallocate velocity on gpu
+    // deallocate particle velocity arrays on gpu
     cudaFree(part->u_gpu);
     cudaFree(part->v_gpu);
     cudaFree(part->w_gpu);
@@ -310,14 +310,18 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
     // print species and subcycling
     std::cout << "*** GPU MOVER with SUBCYCLYING " << param->n_sub_cycles << " - species " << part->species_ID << " ***" << std::endl;
 
-    int stride  = part->nop / 16;
-    int threads = 64;
-    int blocks  = (stride + threads - 1) / threads;
+    int stride  = part->nop / 16; // the number of elements/threads in one partition, the full array is split into 16 equally sized partitions
+    int threads = 64; // one warp is 32 threads, but 64 threads are needed for 100% theoretical occupancy
+    int blocks  = (stride + threads - 1) / threads; // number of thread blocks to cover the entire partition rounded upwards
 
-    // partition the particle array into 4 equally sized partitions, which will be distributed equally amongst the available streams
+    // partition the particle array into 16 equally sized partitions, which will be distributed equally amongst the 16 streams
     for (int i = 0; i != 16; ++i)
     {
-        // dispatch gpu computation of particle movement simulation
+        // we want to interleave kernel dispatches and memcpy dispatches so that the copy engine
+        // can start working as soon as the first kernel invocation is done and not be delayed
+        // because the cpu has not been quick enough to record the dispatch yet
+
+        // dispatch gpu computation of particle movement for one partition
         kernel_mover_PC<<<blocks, threads, 0, stream[i]>>>(part->x_gpu, part->y_gpu, part->z_gpu,
                                                            part->u_gpu, part->v_gpu, part->w_gpu,
                                                            field->Ex_gpu, field->Ey_gpu, field->Ez_gpu,
@@ -330,7 +334,10 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
                                                            param->PERIODICX, param->PERIODICY, param->PERIODICZ,
                                                            grd->nxn, grd->nyn, grd->nzn,
                                                            part->nop, part->n_sub_cycles, part->NiterMover,
-                                                           i * stride);
+                                                           i * stride); // this is the thread offset
+
+        // the following memory copies are async, meaning that the cpu will not wait for them to complete
+        // only the partition that was computed with the kernel invocation above is copied back, not the entire array
 
         // other computations on cpu read from particle position, so copy from gpu to cpu to get most recent values
         cudaMemcpyAsync(&part->x[i * stride], &part->x_gpu[i * stride], sizeof(FPpart) * stride, cudaMemcpyDeviceToHost, stream[i]);
@@ -359,20 +366,23 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
                                 bool PERIODICX, bool PERIODICY, bool PERIODICZ,
                                 int nxn, int nyn, int nzn,
                                 int nop, int nsc, int nim,
-                                int offset)
+                                int offset) // indicates the partition in the entire array that this kernel invocation should work on
 {
-    // global thread index for particle arrays
+    // global thread index in the particle arrays
     int tid = threadIdx.x + blockIdx.x * blockDim.x + offset;
 
+    // protect against potential indices that are out-of-bounds
     if (tid < nop)
     {
+        // load particle position from slow global memory into fast local registers, then use this local register
+        // as a cached version of the array value and only write it back a single time at the end of the kernel
         FPpart Pxl = Px[tid];
         FPpart Pyl = Py[tid];
         FPpart Pzl = Pz[tid];
 
         // auxiliary variables
         FPpart dt_sub_cycling = dt / (FPpart)nsc;
-        FPpart dto2 = (FPpart)0.5 * dt_sub_cycling;
+        FPpart dto2 = (FPpart)0.5 * dt_sub_cycling; // make sure that constant value is cast to the chosen precision to reduce fp64 operations
         FPpart qomdt2 = qom * dto2 / c;
 
         // intermediate particle position and velocity
@@ -382,6 +392,7 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
         // start subcycling
         for (int i = 0; i != nsc; ++i)
         {
+            // use cached version of particle position instead of reading from slow global memory
             xptilde = Pxl;
             yptilde = Pyl;
             zptilde = Pzl;
@@ -394,10 +405,12 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
                 int iy = 2 + int((Pyl - yStart) * invdy);
                 int iz = 2 + int((Pzl - zStart) * invdz);
 
-                FPfield weight[8];
+                FPfield weight[8]; // flattened version of the previous [2][2][2] array
                 FPfield xi[2], eta[2], zeta[2];
 
                 // calculate densities
+                // the cached version of particle position can be used in calculations also to reduce slow global memory accesses
+                // the get_idx function converts a 3D index into a flattened 1D index
                 xi[0]   = Pxl - Nx[get_idx(ix - 1, iy, iz, nyn, nzn)];
                 eta[0]  = Pyl - Ny[get_idx(ix, iy - 1, iz, nyn, nzn)];
                 zeta[0] = Pzl - Nz[get_idx(ix, iy, iz - 1, nyn, nzn)];
@@ -407,15 +420,9 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 
                 // calculate weights
                 for (int u = 0; u != 2; ++u)
-                {
                     for (int v = 0; v != 2; ++v)
-                    {
                         for (int w = 0; w != 2; ++w)
-                        {
                             weight[get_idx(u, v, w, 2, 2)] = xi[u] * eta[v] * zeta[w] * invVOL;
-                        }
-                    }
-                }
 
                 // initialize local electric and magnetic field
                 FPfield Exl = 0.0, Eyl = 0.0, Ezl = 0.0;
@@ -454,12 +461,14 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
                 wptilde = (wt + qomdt2 * (ut * Byl - vt * Bxl + qomdt2 * udotb * Bzl)) * denom;
 
                 // update position
+                // write the intermediate results into the cached version of particle position to reduce slow global memory accesses
                 Pxl = xptilde + uptilde * dto2;
                 Pyl = yptilde + vptilde * dto2;
                 Pzl = zptilde + wptilde * dto2;
             }
 
             // update final velocity
+            // make sure that constant value is cast to the chosen precision to reduce fp64 operations
             Pu[tid] = (FPpart)2.0 * uptilde - Pu[tid];
             Pv[tid] = (FPpart)2.0 * vptilde - Pv[tid];
             Pw[tid] = (FPpart)2.0 * wptilde - Pw[tid];
@@ -468,6 +477,9 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
             Pxl = xptilde + uptilde * dt_sub_cycling;
             Pyl = yptilde + vptilde * dt_sub_cycling;
             Pzl = zptilde + wptilde * dt_sub_cycling;
+
+            // in the following conditional statements, the cached version of particle position is also used
+            // both in comparisons and in computations, which reduces the amount of slow global memory acceses
 
             // X-DIRECTION: BC particles
             if (Pxl > Lx)
@@ -569,6 +581,7 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
             }
         }
 
+        // this is the end of the kernel, and now the cached version of the particle position must be written back to global memory
         Px[tid] = Pxl;
         Py[tid] = Pyl;
         Pz[tid] = Pzl;
