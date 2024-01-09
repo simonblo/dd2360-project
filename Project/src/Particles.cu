@@ -347,17 +347,17 @@ int mover_PC_gpu(struct particles* part, struct EMfield* field, struct grid* grd
 
 /** particle mover kernel */
 __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
-	                            FPpart* Pu, FPpart* Pv, FPpart* Pw,
-	                            FPfield* Ex, FPfield* Ey, FPfield* Ez,
-	                            FPfield* Bx, FPfield* By, FPfield* Bz,
-	                            FPfield* Nx, FPfield* Ny, FPfield* Nz,
-	                            FPpart qom, FPpart dt, FPpart c,
-	                            FPfield invdx, FPfield invdy, FPfield invdz, FPfield invVOL,
-	                            FPpart xStart, FPpart yStart, FPpart zStart,
-	                            FPpart Lx, FPpart Ly, FPpart Lz,
-	                            bool PERIODICX, bool PERIODICY, bool PERIODICZ,
-	                            int nxn, int nyn, int nzn,
-	                            int nop, int nsc, int nim,
+                                FPpart* Pu, FPpart* Pv, FPpart* Pw,
+                                FPfield* Ex, FPfield* Ey, FPfield* Ez,
+                                FPfield* Bx, FPfield* By, FPfield* Bz,
+                                FPfield* Nx, FPfield* Ny, FPfield* Nz,
+                                FPpart qom, FPpart dt, FPpart c,
+                                FPfield invdx, FPfield invdy, FPfield invdz, FPfield invVOL,
+                                FPpart xStart, FPpart yStart, FPpart zStart,
+                                FPpart Lx, FPpart Ly, FPpart Lz,
+                                bool PERIODICX, bool PERIODICY, bool PERIODICZ,
+                                int nxn, int nyn, int nzn,
+                                int nop, int nsc, int nim,
                                 int offset)
 {
     // global thread index for particle arrays
@@ -556,7 +556,7 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
                 // PERIODIC
 				if (PERIODICZ == true)
 				{
-					Pzl = Pzl + Lz;
+                    Pzl = Pzl + Lz;
 				}
 
                 // REFLECTING
