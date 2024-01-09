@@ -607,6 +607,7 @@ void interpP2G(struct particles* part, struct interpDensSpecies* ids, struct gri
                 for (int kk = 0; kk < 2; kk++)
                     weight[ii][jj][kk] = part->q[i] * xi[ii] * eta[jj] * zeta[kk] * grd->invVOL;
 
+
         //////////////////////////
         // add charge density
         for (int ii = 0; ii < 2; ii++)

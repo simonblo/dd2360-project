@@ -7,46 +7,46 @@
 __host__ __device__
 inline long get_idx(long x, long y, long stride_x)
 {
-	return x + (y * stride_x);
+    return x + (y * stride_x);
 }
 
 __host__ __device__
 inline long get_idx(long x, long y, long z, long stride_y, long stride_z)
 {
-	return z + (y * stride_z) + (x * stride_y * stride_z);
+    return z + (y * stride_z) + (x * stride_y * stride_z);
 }
 
 template <class type>
 inline type* newArr1(size_t sz1)
 {
-	type* arr = new type[sz1];
-	return arr;
+    type* arr = new type[sz1];
+    return arr;
 }
 
 template <class type>
 inline type** newArr2(size_t sz1, size_t sz2)
 {
-	type** arr = new type*[sz1];
-	type* ptr = newArr1<type>(sz1 * sz2);
-	for (size_t i = 0; i < sz1; i++)
-	{
-		arr[i] = ptr;
-		ptr += sz2;
-	}
-	return arr;
+    type** arr = new type*[sz1];
+    type* ptr = newArr1<type>(sz1 * sz2);
+    for (size_t i = 0; i < sz1; i++)
+    {
+        arr[i] = ptr;
+        ptr += sz2;
+    }
+    return arr;
 }
 
 template <class type>
 inline type*** newArr3(size_t sz1, size_t sz2, size_t sz3)
 {
-	type*** arr = new type**[sz1];
-	type** ptr = newArr2<type>(sz1 * sz2, sz3);
-	for (size_t i = 0; i < sz1; i++)
-	{
-		arr[i] = ptr;
-		ptr += sz2;
-	}
-	return arr;
+    type*** arr = new type**[sz1];
+    type** ptr = newArr2<type>(sz1 * sz2, sz3);
+    for (size_t i = 0; i < sz1; i++)
+    {
+        arr[i] = ptr;
+        ptr += sz2;
+    }
+    return arr;
 }
 
 /* Build chained pointer hierachy for pre-existing bottom level                        *
@@ -56,61 +56,61 @@ inline type*** newArr3(size_t sz1, size_t sz2, size_t sz3)
 template <class type>
 inline type** newArr2(type** in, size_t sz1, size_t sz2)
 {
-	*in = newArr1<type>(sz1 * sz2);
-	type** arr = newArr1<type*>(sz1);
-	type* ptr = *in;
-	for (size_t i = 0; i < sz1; i++)
-	{
-		arr[i] = ptr;
-		ptr += sz2;
-	}
-	return arr;
+    *in = newArr1<type>(sz1 * sz2);
+    type** arr = newArr1<type*>(sz1);
+    type* ptr = *in;
+    for (size_t i = 0; i < sz1; i++)
+    {
+        arr[i] = ptr;
+        ptr += sz2;
+    }
+    return arr;
 }
 
 template <class type>
 inline type*** newArr3(type** in, size_t sz1, size_t sz2, size_t sz3)
 {
-	*in = newArr1<type>(sz1 * sz2 * sz3);
-	type*** arr = newArr2<type*>(sz1, sz2);
-	type** arr2 = *arr;
-	type* ptr = *in;
-	size_t szarr2 = sz1 * sz2;
-	for (size_t i = 0; i < szarr2; i++)
-	{
-		arr2[i] = ptr;
-		ptr += sz3;
-	}
-	return arr;
+    *in = newArr1<type>(sz1 * sz2 * sz3);
+    type*** arr = newArr2<type*>(sz1, sz2);
+    type** arr2 = *arr;
+    type* ptr = *in;
+    size_t szarr2 = sz1 * sz2;
+    for (size_t i = 0; i < szarr2; i++)
+    {
+        arr2[i] = ptr;
+        ptr += sz3;
+    }
+    return arr;
 }
 
 template <class type>
 inline type** newPinnedArr2(type** in, size_t sz1, size_t sz2)
 {
-	cudaHostAlloc(in, sizeof(type) * sz1 * sz2, cudaHostAllocDefault);
-	type** arr = newArr1<type*>(sz1);
-	type* ptr = *in;
-	for (size_t i = 0; i < sz1; i++)
-	{
-		arr[i] = ptr;
-		ptr += sz2;
-	}
-	return arr;
+    cudaHostAlloc(in, sizeof(type) * sz1 * sz2, cudaHostAllocDefault);
+    type** arr = newArr1<type*>(sz1);
+    type* ptr = *in;
+    for (size_t i = 0; i < sz1; i++)
+    {
+        arr[i] = ptr;
+        ptr += sz2;
+    }
+    return arr;
 }
 
 template <class type>
 inline type*** newPinnedArr3(type** in, size_t sz1, size_t sz2, size_t sz3)
 {
-	cudaHostAlloc(in, sizeof(type) * sz1 * sz2 * sz3, cudaHostAllocDefault);
-	type*** arr = newArr2<type*>(sz1, sz2);
-	type** arr2 = *arr;
-	type* ptr = *in;
-	size_t szarr2 = sz1 * sz2;
-	for (size_t i = 0; i < szarr2; i++)
-	{
-		arr2[i] = ptr;
-		ptr += sz3;
-	}
-	return arr;
+    cudaHostAlloc(in, sizeof(type) * sz1 * sz2 * sz3, cudaHostAllocDefault);
+    type*** arr = newArr2<type*>(sz1, sz2);
+    type** arr2 = *arr;
+    type* ptr = *in;
+    size_t szarr2 = sz1 * sz2;
+    for (size_t i = 0; i < szarr2; i++)
+    {
+        arr2[i] = ptr;
+        ptr += sz3;
+    }
+    return arr;
 }
 
 // methods to deallocate arrays
