@@ -14,17 +14,17 @@ struct particles
 {
     // species ID: 0, 1, 2 , ...
     int species_ID;
-    
+
     // maximum number of particles of this species on this domain. used for memory allocation
     long npmax;
     // number of particles of this species on this domain
     long nop;
-    
+
     // Electron and ions have different number of iterations: ions moves slower than ions
     int NiterMover;
     // number of particle of subcycles in the mover
     int n_sub_cycles;
-    
+
     // number of particles per cell
     int npcel;
     // number of particles per cell - X direction
@@ -33,14 +33,14 @@ struct particles
     int npcely;
     // number of particles per cell - Z direction
     int npcelz;
-    
+
     // charge over mass ratio
     FPpart qom;
-    
+
     //drift and thermal velocities for this species
     FPpart u0, v0, w0;
     FPpart uth, vth, wth;
-    
+
     // 1D arrays[npmax] for particles on cpu
     FPpart *x, *y, *z;
     FPpart *u, *v, *w;

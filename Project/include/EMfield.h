@@ -8,7 +8,7 @@
 struct EMfield
 {
     // field arrays: 4D arrays
-    
+
     // electric field defined on nodes: last index is component
     FPfield*** Ex;
     FPfield* Ex_flat;

@@ -40,14 +40,14 @@ struct grid
     double xStart, xEnd, yStart, yEnd, zStart, zEnd;
     /** domain size */
     double Lx, Ly, Lz;
-    
+
     /** Periodicity for fields X **/
     bool PERIODICX;
     /** Periodicity for fields Y **/
     bool PERIODICY;
     /** Periodicity for fields Z **/
     bool PERIODICZ;
-    
+
     // Nodes coordinate
     /** coordinate node X */
     FPfield* XN_flat;
@@ -76,7 +76,7 @@ void grid_deallocate(struct grid*);
 
 /** interpolation Node to Center */
 void interpN2Cfield(FPfield***, FPfield***, FPfield***, FPfield***, FPfield***, FPfield***, struct grid*);
-    
+
 /** interpolation Node to Center */
 void interpC2Ninterp(FPinterp***, FPinterp***, struct grid*);
 
