@@ -365,6 +365,10 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 
 	if (tid < nop)
 	{
+        FPpart Pxl = Px[tid];
+        FPpart Pyl = Py[tid];
+        FPpart Pzl = Pz[tid];
+
         // auxiliary variables
 		FPpart dt_sub_cycling = dt / (FPpart)nsc;
 		FPpart dto2 = (FPpart)0.5 * dt_sub_cycling;
@@ -377,28 +381,28 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
         // start subcycling
 		for (int i = 0; i != nsc; ++i)
 		{
-			xptilde = Px[tid];
-			yptilde = Py[tid];
-			zptilde = Pz[tid];
+			xptilde = Pxl;
+			yptilde = Pyl;
+			zptilde = Pzl;
 
             // calculate the average velocity iteratively
 			for (int j = 0; j != nim; ++j)
 			{
                 // interpolation G-->P
-				int ix = 2 + int((Px[tid] - xStart) * invdx);
-				int iy = 2 + int((Py[tid] - yStart) * invdy);
-				int iz = 2 + int((Pz[tid] - zStart) * invdz);
+				int ix = 2 + int((Pxl - xStart) * invdx);
+				int iy = 2 + int((Pyl - yStart) * invdy);
+				int iz = 2 + int((Pzl - zStart) * invdz);
 
 				FPfield weight[8];
 				FPfield xi[2], eta[2], zeta[2];
 
                 // calculate densities
-				xi[0]   = Px[tid] - Nx[get_idx(ix - 1, iy, iz, nyn, nzn)];
-				eta[0]  = Py[tid] - Ny[get_idx(ix, iy - 1, iz, nyn, nzn)];
-				zeta[0] = Pz[tid] - Nz[get_idx(ix, iy, iz - 1, nyn, nzn)];
-				xi[1]   = Nx[get_idx(ix, iy, iz, nyn, nzn)] - Px[tid];
-				eta[1]  = Ny[get_idx(ix, iy, iz, nyn, nzn)] - Py[tid];
-				zeta[1] = Nz[get_idx(ix, iy, iz, nyn, nzn)] - Pz[tid];
+				xi[0]   = Pxl - Nx[get_idx(ix - 1, iy, iz, nyn, nzn)];
+				eta[0]  = Pyl - Ny[get_idx(ix, iy - 1, iz, nyn, nzn)];
+				zeta[0] = Pzl - Nz[get_idx(ix, iy, iz - 1, nyn, nzn)];
+				xi[1]   = Nx[get_idx(ix, iy, iz, nyn, nzn)] - Pxl;
+				eta[1]  = Ny[get_idx(ix, iy, iz, nyn, nzn)] - Pyl;
+				zeta[1] = Nz[get_idx(ix, iy, iz, nyn, nzn)] - Pzl;
 
                 // calculate weights
 				for (int u = 0; u != 2; ++u)
@@ -449,9 +453,9 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 				wptilde = (wt + qomdt2 * (ut * Byl - vt * Bxl + qomdt2 * udotb * Bzl)) * denom;
 
                 // update position
-				Px[tid] = xptilde + uptilde * dto2;
-				Py[tid] = yptilde + vptilde * dto2;
-				Pz[tid] = zptilde + wptilde * dto2;
+				Pxl = xptilde + uptilde * dto2;
+				Pyl = yptilde + vptilde * dto2;
+				Pzl = zptilde + wptilde * dto2;
 			}
 
 			// update final velocity
@@ -460,109 +464,113 @@ __global__ void kernel_mover_PC(FPpart* Px, FPpart* Py, FPpart* Pz,
 			Pw[tid] = (FPpart)2.0 * wptilde - Pw[tid];
 
 			// update final position
-			Px[tid] = xptilde + uptilde * dt_sub_cycling;
-			Py[tid] = yptilde + vptilde * dt_sub_cycling;
-			Pz[tid] = zptilde + wptilde * dt_sub_cycling;
+			Pxl = xptilde + uptilde * dt_sub_cycling;
+			Pyl = yptilde + vptilde * dt_sub_cycling;
+			Pzl = zptilde + wptilde * dt_sub_cycling;
 
             // X-DIRECTION: BC particles
-			if (Px[tid] > Lx)
+			if (Pxl > Lx)
 			{
                 // PERIODIC
 				if (PERIODICX == true)
 				{
-					Px[tid] = Px[tid] - Lx;
+					Pxl = Pxl - Lx;
 				}
 
                 // REFLECTING
 				else
 				{
 					Pu[tid] = -Pu[tid];
-					Px[tid] = (FPpart)2.0 * Lx - Px[tid];
+					Pxl = (FPpart)2.0 * Lx - Pxl;
 				}
 			}
 
-			if (Px[tid] < (FPpart)0.0)
+			if (Pxl < (FPpart)0.0)
 			{
                 // PERIODIC
 				if (PERIODICX == true)
 				{
-					Px[tid] = Px[tid] + Lx;
+					Pxl = Pxl + Lx;
 				}
 
                 // REFLECTING
 				else
 				{
 					Pu[tid] = -Pu[tid];
-					Px[tid] = -Px[tid];
+					Pxl = -Pxl;
 				}
 			}
 
             // Y-DIRECTION: BC particles
-			if (Py[tid] > Ly)
+			if (Pyl > Ly)
 			{
                 // PERIODIC
 				if (PERIODICY == true)
 				{
-					Py[tid] = Py[tid] - Ly;
+					Pyl = Pyl - Ly;
 				}
 
                 // REFLECTING
 				else
 				{
 					Pv[tid] = -Pv[tid];
-					Py[tid] = (FPpart)2.0 * Ly - Py[tid];
+					Pyl = (FPpart)2.0 * Ly - Pyl;
 				}
 			}
 
-			if (Py[tid] < (FPpart)0.0)
+			if (Pyl < (FPpart)0.0)
 			{
                 // PERIODIC
 				if (PERIODICY == true)
 				{
-					Py[tid] = Py[tid] + Ly;
+					Pyl = Pyl + Ly;
 				}
 
                 // REFLECTING
 				else
 				{
 					Pv[tid] = -Pv[tid];
-					Py[tid] = -Py[tid];
+					Pyl = -Pyl;
 				}
 			}
 
             // Z-DIRECTION: BC particles
-			if (Pz[tid] > Lz)
+			if (Pzl > Lz)
 			{
                 // PERIODIC
 				if (PERIODICZ == true)
 				{
-					Pz[tid] = Pz[tid] - Lz;
+					Pzl = Pzl - Lz;
 				}
 
                 // REFLECTING
 				else
 				{
 					Pw[tid] = -Pw[tid];
-					Pz[tid] = (FPpart)2.0 * Lz - Pz[tid];
+					Pzl = (FPpart)2.0 * Lz - Pzl;
 				}
 			}
 
-			if (Pz[tid] < (FPpart)0.0)
+			if (Pzl < (FPpart)0.0)
 			{
                 // PERIODIC
 				if (PERIODICZ == true)
 				{
-					Pz[tid] = Pz[tid] + Lz;
+					Pzl = Pzl + Lz;
 				}
 
                 // REFLECTING
 				else
 				{
 					Pw[tid] = -Pw[tid];
-					Pz[tid] = -Pz[tid];
+					Pzl = -Pzl;
 				}
 			}
 		}
+
+        Px[tid] = Pxl;
+        Py[tid] = Pyl;
+        Pz[tid] = Pzl;
 	}
 }
 
